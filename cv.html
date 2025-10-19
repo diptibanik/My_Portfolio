@@ -1,0 +1,657 @@
+<!-- end list -->
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Professional CV / Portfolio Generator</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        /* New Custom Style */
+        :root {
+            --bs-primary: #004d99; /* Darker Blue */
+            --bs-success: #28a745;
+            --cv-section-color: #004d99;
+        }
+        .btn-primary { background-color: var(--bs-primary); border-color: var(--bs-primary); }
+        .btn-primary:hover { background-color: #003366; border-color: #003366; }
+
+        body { 
+            background: #f8f9fa; /* Light grey background */
+            font-family: 'Arial', sans-serif; 
+        }
+        .center-card { max-width: 1100px; margin: 30px auto; }
+        .card { border-radius: 12px; border: none; transition: all 0.3s ease; }
+        .card-body { padding: 30px; }
+        
+        /* Animation for Auth Card */
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+            50% { transform: scale(1.005); box-shadow: 0 4px 15px rgba(0, 77, 153, 0.2); }
+            100% { transform: scale(1); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        }
+        .animated-card {
+            animation: pulse 4s infinite ease-in-out;
+        }
+        
+        /* Avatar & Preview Styles */
+        .avatar-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid var(--bs-primary); }
+        .cv-preview { 
+            background: white; 
+            padding: 30px; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            font-size: 0.95rem;
+        }
+        .section-title { 
+            font-weight: 700; 
+            margin-top: 20px; 
+            margin-bottom: 8px;
+            padding-bottom: 2px;
+            color: var(--cv-section-color);
+            border-bottom: 2px solid #f0f0f0;
+            font-size: 1.1rem;
+        }
+        .small-muted { font-size: 0.85rem; color: #6c757d; }
+        .required-star { color: #d63384; }
+
+        /* Form specific styles */
+        input:focus, textarea:focus { border-color: var(--bs-primary); box-shadow: 0 0 0 0.25rem rgba(0, 77, 153, 0.25); }
+    </style>
+</head>
+<body>
+    <div class="container center-card">
+
+        <div id="auth-card" class="card shadow-lg animated-card">
+            <div class="card-body">
+                <h4 class="card-title">CV Generator — Login / Sign up</h4>
+                <p class="small-muted">Log in to access the CV builder form. </p>
+
+                <div id="auth-forms">
+                    <div id="login-form" class="mt-4">
+                        <form onsubmit="event.preventDefault(); handleLogin();">
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input id="login-email" type="email" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <input id="login-password" type="password" class="form-control" required>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary" type="submit">Login</button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="showSignup()">Sign up</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="signup-form" class="mt-4" style="display:none;">
+                        <form onsubmit="event.preventDefault(); handleSignup();">
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input id="signup-email" type="email" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <input id="signup-password" type="password" class="form-control" minlength="6" required>
+                                <div class="form-text">Password must be at least 6 characters (demo).</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-success" type="submit">Create Account</button>
+                                <button class="btn btn-link" type="button" onclick="showLogin()">Back to login</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="app" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center my-4">
+                <h3>Professional CV Builder</h3>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" onclick="logout()">Logout</button>
+                    <button class="btn btn-primary" onclick="downloadPDF()">Generate & Download PDF</button>
+                </div>
+            </div>
+
+            <div class="row gx-5 gy-4">
+                <div class="col-lg-6">
+                    <div class="card shadow-lg">
+                        <div class="card-body">
+                            <h5 class="text-primary">Personal Information <span class="required-star">*</span></h5>
+                            <form id="cv-form" onsubmit="event.preventDefault(); applyData();">
+                                <div class="mb-3">
+                                    <label class="form-label">Full Name <span class="required-star">*</span></label>
+                                    <input id="fullName" class="form-control" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Contact (Email / Phone) <span class="required-star">*</span></label>
+                                    <input id="contact" class="form-control" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Photo (.jpg/.png) <span class="required-star">*</span></label>
+                                    <input id="photo" type="file" accept="image/*" class="form-control" required onchange="previewImage(event)">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Short Bio / Summary <span class="required-star">*</span></label>
+                                    <textarea id="bio" class="form-control" rows="3" required></textarea>
+                                </div>
+
+                                <hr>
+
+                                <h6 class="text-primary">Skills</h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Soft Skills (comma separated)</label>
+                                    <input id="softSkills" class="form-control" placeholder="Communication, Teamwork, Leadership">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Technical Skills (comma separated)</label>
+                                    <input id="techSkills" class="form-control" placeholder="Python, Flask, SQL, Git">
+                                </div>
+
+                                <hr>
+
+                                <h6 class="text-primary">Academic Background (Optional)</h6>
+                                <div id="education-list">
+                                    <div class="edu-item mb-3 p-3 border rounded bg-light">
+                                        <input class="form-control mb-2 edu-institute" placeholder="Institute (e.g. ABC University)">
+                                        <div class="row g-2">
+                                            <div class="col-md-6"><input class="form-control edu-degree" placeholder="Degree (e.g. BSc in CSE)"></div>
+                                            <div class="col-md-3"><input class="form-control edu-year" placeholder="Year (e.g. 2024)"></div>
+                                            <div class="col-md-3"><input class="form-control edu-grade" placeholder="Grade/CGPA (e.g. 3.80)"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <button class="btn btn-sm btn-outline-primary" type="button" onclick="addEducation()">➕ Add Another Education</button>
+                                </div>
+
+                                <hr>
+
+                                <h6 class="text-primary">Work Experience (Optional)</h6>
+                                <div id="experience-list">
+                                    <div class="exp-item mb-3 p-3 border rounded bg-light">
+                                        <input class="form-control mb-2 exp-company" placeholder="Company Name">
+                                        <div class="row g-2">
+                                            <div class="col-md-6"><input class="form-control exp-duration" placeholder="Duration (e.g. Jan 2023 - Dec 2024)"></div>
+                                            <div class="col-md-6"><input class="form-control exp-role" placeholder="Role / Title"></div>
+                                        </div>
+                                        <textarea class="form-control mt-2 exp-resp" rows="3" placeholder="Responsibilities (comma separated or new lines)"></textarea>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <button class="btn btn-sm btn-outline-primary" type="button" onclick="addExperience()">➕ Add Another Experience</button>
+                                </div>
+
+                                <hr>
+
+                                <h6 class="text-primary">Projects / Publications (Optional)</h6>
+                                <textarea id="projects" class="form-control" rows="3" placeholder="List key projects or publications (one per line or comma separated)"></textarea>
+
+                                <div class="mt-4 d-flex gap-3">
+                                    <button class="btn btn-success btn-lg" type="submit">Apply to Preview</button>
+                                    <button class="btn btn-outline-secondary btn-lg" type="button" onclick="resetForm()">Reset Form</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card shadow-lg sticky-top" style="top: 20px;">
+                        <div class="card-body">
+                            <h5 class="text-primary">Live CV Preview</h5>
+                            <p class="small-muted">Click "Apply to Preview" to update the preview. Then use "Generate & Download PDF".</p>
+
+                            <div id="cv-render" class="cv-preview mt-3" style="min-height:700px;">
+                                <div id="cv-content">
+                                    <div style="display:flex; gap:20px; align-items:center; padding-bottom: 10px; border-bottom: 3px solid #f0f0f0;">
+                                        <img id="cv-photo" src="" alt="photo" class="avatar-preview" style="display:none;">
+                                        <div>
+                                            <h3 id="cv-name" style="margin-bottom: 0; color: var(--bs-primary); font-weight: 700;">Your Full Name</h3>
+                                            <div id="cv-contact" class="small-muted">Contact information (Email / Phone)</div>
+                                        </div>
+                                    </div>
+                                    <div id="cv-bio" class="mt-3" style="line-height: 1.6;">Your short bio / summary will appear here.</div>
+
+                                    <div id="cv-skills" class="mt-3"></div>
+
+                                    <div id="cv-education" class="mt-3"></div>
+
+                                    <div id="cv-experience" class="mt-3"></div>
+
+                                    <div id="cv-projects" class="mt-3"></div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="text-muted mt-3 small text-center">Note: This app is frontend-only for assignment demo. Login and form data are stored only in browser sessionStorage.</div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+<script>
+    // Simple client-side auth using sessionStorage
+    // For assignment demo only. Not secure for production.
+    function showSignup(){
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('signup-form').style.display = 'block';
+    }
+    function showLogin(){
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById('signup-form').style.display = 'none';
+    }
+
+    function handleSignup(){
+        const email = document.getElementById('signup-email').value.trim();
+        const pass = document.getElementById('signup-password').value;
+        if(!email || !pass) return alert('Please provide email & password.');
+        // store in sessionStorage as a simple demo user DB keyed by email
+        let users = JSON.parse(sessionStorage.getItem('cv_users') || '{}');
+        if(users[email]) return alert('Account already exists. Please use login.');
+        users[email] = { password: pass };
+        sessionStorage.setItem('cv_users', JSON.stringify(users));
+        alert('Account created. Please log in now.');
+        showLogin();
+    }
+
+    function handleLogin(){
+        const email = document.getElementById('login-email').value.trim();
+        const pass = document.getElementById('login-password').value;
+        if(!email || !pass) return alert('Please provide email & password.');
+        let users = JSON.parse(sessionStorage.getItem('cv_users') || '{}');
+        const user = users[email];
+        if(!user || user.password !== pass) return alert('Invalid credentials (demo).');
+        // set active user
+        sessionStorage.setItem('cv_active', email);
+        enterApp();
+    }
+
+    function logout(){
+        sessionStorage.removeItem('cv_active');
+        location.reload();
+    }
+
+    // On load: check active user
+    window.addEventListener('DOMContentLoaded', () => {
+        // Ensure default edu/exp are present if no saved data
+        if(document.querySelectorAll('#education-list .edu-item').length === 0) addEducation(true);
+        if(document.querySelectorAll('#experience-list .exp-item').length === 0) addExperience(true);
+
+        if(sessionStorage.getItem('cv_active')){
+            enterApp();
+        } else {
+            document.getElementById('auth-card').style.display = 'block';
+            document.getElementById('app').style.display = 'none';
+        }
+    });
+
+    function enterApp(){
+        document.getElementById('auth-card').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        // If any saved draft for this user exists in sessionStorage, load it
+        const email = sessionStorage.getItem('cv_active');
+        const saved = JSON.parse(sessionStorage.getItem('cv_draft_' + email) || 'null');
+        if(saved) {
+            populateFormFromData(saved);
+        } else {
+             // If no saved data, ensure one default item exists for each list
+             if(document.querySelectorAll('#education-list .edu-item').length === 0) addEducation(true);
+             if(document.querySelectorAll('#experience-list .exp-item').length === 0) addExperience(true);
+        }
+    }
+
+    // Image preview: store data URL in variable
+    let photoDataURL = '';
+
+    function previewImage(event){
+        const file = event.target.files[0];
+        if(!file) return;
+        const allowed = ['image/jpeg','image/png','image/jpg'];
+        if(!allowed.includes(file.type)) return alert('Only jpg/png allowed.');
+        const reader = new FileReader();
+        reader.onload = function(e){
+            photoDataURL = e.target.result;
+            document.getElementById('cv-photo').src = photoDataURL;
+            document.getElementById('cv-photo').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Add education & experience dynamic entries
+    function addEducation(isDefault = false){
+        const container = document.getElementById('education-list');
+        // If it's the first item and it was added on load, remove existing blank item if any
+        if(isDefault && container.querySelector('.edu-item:not(.has-remove-button)')) return;
+
+        const div = document.createElement('div');
+        div.className = 'edu-item mb-3 p-3 border rounded bg-light';
+        if(!isDefault) div.classList.add('has-remove-button');
+        
+        div.innerHTML = `
+            <input class="form-control mb-2 edu-institute" placeholder="Institute (e.g. ABC University)">
+            <div class="row g-2">
+                <div class="col-md-6"><input class="form-control edu-degree" placeholder="Degree (e.g. BSc in CSE)"></div>
+                <div class="col-md-3"><input class="form-control edu-year" placeholder="Year (e.g. 2024)"></div>
+                <div class="col-md-3"><input class="form-control edu-grade" placeholder="Grade/CGPA (e.g. 3.80)"></div>
+            </div>
+            ${isDefault ? '' : '<button type="button" class="btn btn-sm btn-link text-danger mt-2 p-0" onclick="this.parentElement.remove()">❌ Remove</button>'}
+        `;
+        container.appendChild(div);
+    }
+    function addExperience(isDefault = false){
+        const container = document.getElementById('experience-list');
+        // If it's the first item and it was added on load, remove existing blank item if any
+        if(isDefault && container.querySelector('.exp-item:not(.has-remove-button)')) return;
+
+        const div = document.createElement('div');
+        div.className = 'exp-item mb-3 p-3 border rounded bg-light';
+        if(!isDefault) div.classList.add('has-remove-button');
+        
+        div.innerHTML = `
+            <input class="form-control mb-2 exp-company" placeholder="Company Name">
+            <div class="row g-2">
+                <div class="col-md-6"><input class="form-control exp-duration" placeholder="Duration (e.g. Jan 2023 - Dec 2024)"></div>
+                <div class="col-md-6"><input class="form-control exp-role" placeholder="Role / Title"></div>
+            </div>
+            <textarea class="form-control mt-2 exp-resp" rows="3" placeholder="Responsibilities (comma separated or new lines)"></textarea>
+            ${isDefault ? '' : '<button type="button" class="btn btn-sm btn-link text-danger mt-2 p-0" onclick="this.parentElement.remove()">❌ Remove</button>'}
+        `;
+        container.appendChild(div);
+    }
+
+    function resetForm(){
+        if(!confirm('Are you sure you want to reset the form?')) return;
+        document.getElementById('cv-form').reset();
+        document.getElementById('cv-photo').style.display = 'none';
+        document.getElementById('cv-name').innerText = 'Your Full Name';
+        document.getElementById('cv-contact').innerText = 'Contact information (Email / Phone)';
+        document.getElementById('cv-bio').innerText = 'Your short bio / summary will appear here.';
+        document.getElementById('cv-skills').innerHTML = '';
+        document.getElementById('cv-education').innerHTML = '';
+        document.getElementById('cv-experience').innerHTML = '';
+        document.getElementById('cv-projects').innerHTML = '';
+        photoDataURL = '';
+        
+        // Clear saved draft for current user
+        const email = sessionStorage.getItem('cv_active');
+        if(email) sessionStorage.removeItem('cv_draft_' + email);
+
+        // Reload to restore default structure (easiest way)
+        location.reload(); 
+    }
+
+    // Collect form data and render preview
+    function applyData(){
+        // required fields
+        const name = document.getElementById('fullName').value.trim();
+        const contact = document.getElementById('contact').value.trim();
+        const bio = document.getElementById('bio').value.trim();
+        if(!name || !contact || !bio){
+            return alert('Please fill in the required fields (Name, Contact, Bio).');
+        }
+        if(!photoDataURL && !document.getElementById('photo').files[0]){
+             return alert('Please upload a photo.');
+        }
+
+        const softSkills = document.getElementById('softSkills').value.trim();
+        const techSkills = document.getElementById('techSkills').value.trim();
+
+        // education
+        const educations = [];
+        document.querySelectorAll('#education-list .edu-item').forEach(node => {
+            const inst = node.querySelector('.edu-institute')?.value?.trim();
+            const degree = node.querySelector('.edu-degree')?.value?.trim();
+            const year = node.querySelector('.edu-year')?.value?.trim();
+            const grade = node.querySelector('.edu-grade')?.value?.trim();
+            if(inst || degree || year || grade){
+                educations.push({ inst, degree, year, grade });
+            }
+        });
+
+        // experience
+        const exps = [];
+        document.querySelectorAll('#experience-list .exp-item').forEach(node => {
+            const comp = node.querySelector('.exp-company')?.value?.trim();
+            const dur = node.querySelector('.exp-duration')?.value?.trim();
+            const role = node.querySelector('.exp-role')?.value?.trim();
+            const resp = node.querySelector('.exp-resp')?.value?.trim();
+            if(comp || dur || role || resp){
+                exps.push({ comp, dur, role, resp });
+            }
+        });
+
+        const projects = document.getElementById('projects').value.trim();
+
+        const data = { name, contact, bio, photoDataURL, softSkills, techSkills, educations, exps, projects, timestamp: new Date().toISOString() };
+
+        // Save draft for current user in sessionStorage (no DB)
+        const email = sessionStorage.getItem('cv_active');
+        if(email) sessionStorage.setItem('cv_draft_' + email, JSON.stringify(data));
+
+        renderPreview(data);
+        alert('Preview updated! You can now generate the PDF.');
+    }
+
+    function populateFormFromData(data){
+        try{
+            document.getElementById('fullName').value = data.name || '';
+            document.getElementById('contact').value = data.contact || '';
+            document.getElementById('bio').value = data.bio || '';
+            document.getElementById('softSkills').value = data.softSkills || '';
+            document.getElementById('techSkills').value = data.techSkills || '';
+            // photo
+            if(data.photoDataURL){
+                photoDataURL = data.photoDataURL;
+                document.getElementById('cv-photo').src = photoDataURL;
+                document.getElementById('cv-photo').style.display = 'block';
+            }
+            // education
+            const eduContainer = document.getElementById('education-list');
+            eduContainer.innerHTML = '';
+            if(data.educations && data.educations.length){
+                data.educations.forEach((ed, index) => {
+                    const div = document.createElement('div');
+                    // Add has-remove-button class if it's not the first item
+                    div.className = `edu-item mb-3 p-3 border rounded bg-light ${index === 0 ? '' : 'has-remove-button'}`;
+                    div.innerHTML = `
+                        <input class="form-control mb-2 edu-institute" placeholder="Institute (e.g. ABC University)" value="${escapeHtml(ed.inst || '')}">
+                        <div class="row g-2">
+                            <div class="col-md-6"><input class="form-control edu-degree" placeholder="Degree (e.g. BSc in CSE)" value="${escapeHtml(ed.degree || '')}"></div>
+                            <div class="col-md-3"><input class="form-control edu-year" placeholder="Year (e.g. 2024)" value="${escapeHtml(ed.year || '')}"></div>
+                            <div class="col-md-3"><input class="form-control edu-grade" placeholder="Grade/CGPA (e.g. 3.80)" value="${escapeHtml(ed.grade || '')}"></div>
+                        </div>
+                        ${index === 0 ? '' : '<button type="button" class="btn btn-sm btn-link text-danger mt-2 p-0" onclick="this.parentElement.remove()">❌ Remove</button>'}
+                    `;
+                    eduContainer.appendChild(div);
+                });
+            } else {
+                addEducation(true); // default single blank
+            }
+
+            // experience
+            const expContainer = document.getElementById('experience-list');
+            expContainer.innerHTML = '';
+            if(data.exps && data.exps.length){
+                data.exps.forEach((ex, index) => {
+                    const div = document.createElement('div');
+                    // Add has-remove-button class if it's not the first item
+                    div.className = `exp-item mb-3 p-3 border rounded bg-light ${index === 0 ? '' : 'has-remove-button'}`;
+                    div.innerHTML = `
+                        <input class="form-control mb-2 exp-company" placeholder="Company Name" value="${escapeHtml(ex.comp || '')}">
+                        <div class="row g-2">
+                            <div class="col-md-6"><input class="form-control exp-duration" placeholder="Duration (e.g. Jan 2023 - Dec 2024)" value="${escapeHtml(ex.dur || '')}"></div>
+                            <div class="col-md-6"><input class="form-control exp-role" placeholder="Role / Title" value="${escapeHtml(ex.role || '')}"></div>
+                        </div>
+                        <textarea class="form-control mt-2 exp-resp" rows="3" placeholder="Responsibilities (comma separated or new lines)">${escapeHtml(ex.resp || '')}</textarea>
+                        ${index === 0 ? '' : '<button type="button" class="btn btn-sm btn-link text-danger mt-2 p-0" onclick="this.parentElement.remove()">❌ Remove</button>'}
+                    `;
+                    expContainer.appendChild(div);
+                });
+            } else {
+                addExperience(true); // default single blank
+            }
+
+            document.getElementById('projects').value = data.projects || '';
+            renderPreview(data);
+        } catch(e){
+            console.error(e);
+        }
+    }
+
+    function escapeHtml(s){
+        return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // Render preview to CV area
+    function renderPreview(data){
+        document.getElementById('cv-name').innerText = data.name || 'Your Full Name';
+        document.getElementById('cv-contact').innerText = data.contact || 'Contact information (Email / Phone)';
+        document.getElementById('cv-bio').innerText = data.bio || 'Your short bio / summary will appear here.';
+        // photo set already
+        if(data.photoDataURL){
+            document.getElementById('cv-photo').src = data.photoDataURL;
+            document.getElementById('cv-photo').style.display = 'block';
+        }
+
+        // skills
+        let skillsHtml = '';
+        if(data.softSkills || data.techSkills){
+            skillsHtml += '<div class="section-title">Skills</div>';
+            if(data.softSkills) skillsHtml += `<div><strong>Soft Skills:</strong> ${escapeHtml(data.softSkills)}</div>`;
+            if(data.techSkills) skillsHtml += `<div><strong>Technical Skills:</strong> ${escapeHtml(data.techSkills)}</div>`;
+        }
+        document.getElementById('cv-skills').innerHTML = skillsHtml;
+
+        // education
+        let eduHtml = '';
+        if(data.educations && data.educations.length){
+            eduHtml += '<div class="section-title">Academic Background</div>';
+            data.educations.forEach(ed => {
+                const parts = [];
+                if(ed.institute) parts.push(escapeHtml(ed.institute));
+                if(ed.degree) parts.push(escapeHtml(ed.degree));
+                
+                eduHtml += `<div class="mb-1">
+                    <strong>${escapeHtml(ed.inst || '')}</strong> — ${escapeHtml(ed.degree || '')} 
+                    <span class="small-muted">${ed.year?('('+escapeHtml(ed.year)+')'):''} ${ed.grade?('- '+escapeHtml(ed.grade)):''}</span>
+                </div>`;
+            });
+        }
+        document.getElementById('cv-education').innerHTML = eduHtml;
+
+        // experience - Enhanced with bullet points
+        let expHtml = '';
+        if(data.exps && data.exps.length){
+            expHtml += '<div class="section-title">Work Experience</div>';
+            data.exps.forEach(ex => {
+                expHtml += `<div class="mb-2">
+                    <strong>${escapeHtml(ex.comp || '')}</strong> — ${escapeHtml(ex.role || '')} 
+                    <div class="small-muted">${escapeHtml(ex.dur || '')}</div>`;
+                
+                if(ex.resp){
+                    // Split by newline or comma and create list items
+                    const responsibilities = ex.resp.split(/[\n,]+/).map(r => r.trim()).filter(r => r.length > 0);
+                    if(responsibilities.length > 0){
+                        expHtml += `<ul style="font-size: 0.95rem; margin-top: 5px; padding-left: 20px;">`;
+                        responsibilities.forEach(r => {
+                            expHtml += `<li>${escapeHtml(r)}</li>`;
+                        });
+                        expHtml += `</ul>`;
+                    }
+                }
+                expHtml += `</div>`;
+            });
+        }
+        document.getElementById('cv-experience').innerHTML = expHtml;
+
+        // projects - Enhanced with bullet points
+        let projHtml = '';
+        if(data.projects){
+            projHtml += '<div class="section-title">Projects / Publications</div>';
+            // Split by newline or comma and create list items
+            const projectItems = data.projects.split(/[\n,]+/).map(p => p.trim()).filter(p => p.length > 0);
+            if(projectItems.length > 0){
+                projHtml += `<ul style="font-size: 0.95rem; margin-top: 5px; padding-left: 20px;">`;
+                projectItems.forEach(p => {
+                    projHtml += `<li>${escapeHtml(p)}</li>`;
+                });
+                projHtml += `</ul>`;
+            } else {
+                projHtml += `<div>${escapeHtml(data.projects)}</div>`;
+            }
+        }
+        document.getElementById('cv-projects').innerHTML = projHtml;
+    }
+
+    // PDF generation using html2canvas + jsPDF
+    async function downloadPDF(){
+        const email = sessionStorage.getItem('cv_active');
+        const saved = JSON.parse(sessionStorage.getItem('cv_draft_' + email) || 'null');
+        if(!saved) return alert('No data found. Please fill the form and click "Apply to Preview" first.');
+
+        const cvElement = document.getElementById('cv-render');
+
+        try{
+            const btn = document.querySelector('button.btn-primary');
+            btn.disabled = true;
+            btn.innerText = 'Generating PDF...';
+
+            // html2canvas options for high resolution
+            const canvas = await html2canvas(cvElement, { scale: 3, useCORS: true, allowTaint: true });
+            const imgData = canvas.toDataURL('image/png');
+
+            // create jsPDF
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'pt', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            // image full width calculation
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgWidth = pageWidth - 40; // 20pt left/right margins
+            const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+            let position = 20; // top margin
+            let heightLeft = imgHeight;
+            let canvasSliceY = 0;
+
+            // Simple multi-page logic (Puts the whole image on the PDF, relies on jsPDF overflow)
+            // For production, a more robust content-splitting logic would be needed.
+            pdf.addImage(imgData, 'PNG', 20, position, imgWidth, imgHeight, null, 'NONE');
+
+            pdf.save((saved.name || 'CV').replace(/\s+/g,'_') + '_CV.pdf');
+        } catch (err){
+            console.error(err);
+            alert('Failed to generate PDF: ' + err.message);
+        } finally {
+            const btn = document.querySelector('button.btn-primary');
+            if(btn){ btn.disabled = false; btn.innerText = 'Generate & Download PDF'; }
+        }
+    }
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+```
